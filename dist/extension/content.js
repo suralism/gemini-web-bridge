@@ -1168,6 +1168,38 @@
     thinking: ["thinking", "คิด"]
   };
 
+  /**
+   * Score a menu entry against a catalog model id / name.
+   *
+   * The Thai UI drops the version ("อาร์กอน" has no "4"), so a version token
+   * must be a bonus, never a requirement — requiring it matched nothing and the
+   * picker was left untouched on every switch.
+   */
+  function scoreModelMatch(text, wanted) {
+    const words = String(wanted || "").split(/[-_\s]+/).filter(Boolean);
+    if (words.length === 0) return 0;
+    const family = words.find((w) => MODEL_WORD_SYNONYMS[w] && w !== "thinking");
+    const wantsThinking = words.includes("thinking");
+    const versionTokens = words.filter((w) => /^\d/.test(w)).join(" ");
+
+    if (family) {
+      if (!MODEL_WORD_SYNONYMS[family].some((alt) => text.includes(alt))) return 0;
+    } else if (!words.every((w) => text.includes(w))) {
+      return 0;
+    }
+
+    let score = 10;
+    if (versionTokens) {
+      const digits = versionTokens.split(/[.\s]+/).filter(Boolean);
+      if (digits.length && digits.every((d) => text.includes(d))) score += 5;
+      else if (digits[0] && text.includes(digits[0])) score += 1;
+    }
+    const isThinking = text.includes("thinking") || text.includes("คิด");
+    if (wantsThinking) score += isThinking ? 3 : -5;
+    else if (isThinking) score -= 3;
+    return score;
+  }
+
   function modelTextMatches(text, wanted) {
     const words = String(wanted || "").split(/[-_\s]+/).filter(Boolean);
     if (words.length === 0) return false;
@@ -1231,21 +1263,26 @@
         await new Promise((r) => setTimeout(r, 100));
       }
 
-      let matched = false;
+      const wantedList = [cleanTarget, displayTarget].filter(Boolean);
+      let bestItem = null;
+      let bestScore = 0;
       for (const item of items) {
         const text = normalizeModelText(item.innerText || item.textContent || "");
-        if (cleanTarget.includes("thinking") && text.includes("thinking")) {
-          item.click();
-          matched = true;
-          break;
+        if (!text) continue;
+        for (const wanted of wantedList) {
+          const score = scoreModelMatch(text, wanted.replace(/thinking$/, ""));
+          if (score > bestScore) {
+            bestScore = score;
+            bestItem = item;
+          }
         }
-        const wanted = [cleanTarget, displayTarget].filter(Boolean);
-        const hit = wanted.some((w) => modelTextMatches(text, w.replace(/thinking$/, "")));
-        if (hit) {
-          item.click(); // Select target model item
-          matched = true;
-          break;
-        }
+      }
+      let matched = false;
+      if (bestItem && bestScore >= 10) {
+        bestItem.click();
+        matched = true;
+        await new Promise((r) => setTimeout(r, 600));
+        console.log(`[Bridge] model picker -> "${readActiveModelLabel()}" (score ${bestScore})`);
       }
 
       if (matched) {
