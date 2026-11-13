@@ -57,3 +57,11 @@ The unpacked extension id is stable for a given path and is shown on
 
 Health: `curl https://gemini-bridge.suralism.workers.dev/health` →
 `extension_status: CONNECTED_AND_READY` when the browser bridge is live.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `/health` says DISCONNECTED but the page pill says Online | WS upgrade rejected | check `ALLOWED_ORIGINS` contains the current extension origin (403) |
+| `chat/completions` 500 `Google Web Endpoint returned HTTP 400` | Gemini web rejected the replayed StreamGenerate payload for the account/UI/model in use | switch the page model (Pro is known-good), retry on the primary Google account (`/u/0`), or set `GEMINI_API_KEY` and rely on the hybrid fallback (non-streaming only) |
+| Extension won't load: `Could not load options page` | upstream deleted `options.html` but kept the manifest key | fixed here — `dist/extension/options.html` is tracked |
