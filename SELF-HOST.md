@@ -35,6 +35,18 @@ Then in Chrome: `chrome://extensions` → Developer mode → **Load unpacked** �
 `G:\Vibe\gemini-web-bridge\dist\extension-local`, and keep
 `https://gemini.google.com` open and logged in.
 
+## Required vars (beyond the secrets)
+
+`ALLOWED_ORIGINS` must include the Chrome extension origin or every `/bridge`
+upgrade is rejected with HTTP 403 (KAN-308):
+
+```toml
+ALLOWED_ORIGINS = "chrome-extension://<extension-id>"
+```
+
+The unpacked extension id is stable for a given path and is shown on
+`chrome://extensions`. Current id: `dlbegaecpgfiblgidolejligmkghojkd`.
+
 ## Use from clients
 
 - OpenAI-compatible: `https://gemini-bridge.suralism.workers.dev/v1`
