@@ -22,10 +22,10 @@
   const Settings = (typeof globalThis !== "undefined" && globalThis.GeminiBridgeSettings)
     ? globalThis.GeminiBridgeSettings
     : {
-        DEFAULT_WORKER_URL: "https://prod.gemini-web-bridge.workers.dev",
+        DEFAULT_WORKER_URL: "__WORKER_URL__",
         DEFAULT_BRIDGE_AUTH_TOKEN: "__BRIDGE_AUTH_TOKEN__",
         resolveSettings: (s = {}) => ({
-          workerUrl: s.workerUrl || "https://prod.gemini-web-bridge.workers.dev",
+          workerUrl: s.workerUrl || "__WORKER_URL__",
           bridgeToken: s.bridgeToken || "__BRIDGE_AUTH_TOKEN__",
           rawBridgeToken: s.bridgeToken || "",
           enforcementMode: s.enforcementMode === "permissive" ? "permissive" : "strict",

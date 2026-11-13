@@ -21,9 +21,9 @@ import {
   supportsMultiplexedProtocol,
 } from './protocol-messages.js';
 
-const DEFAULT_WORKER_URL = "https://prod.gemini-web-bridge.workers.dev";
+const DEFAULT_WORKER_URL = "__WORKER_URL__";
 // Injected by scripts/build-extension.py at build time — never commit real values.
-const DEFAULT_BRIDGE_AUTH_TOKEN = "gemini-bridge-adc08040f16fd4db855faf6807eefb0cd36c66abc7eccf3bc6ecaa37dd7ca615";
+const DEFAULT_BRIDGE_AUTH_TOKEN = "__BRIDGE_AUTH_TOKEN__";
 const SCOPE_SWITCH_TIMEOUT_MS = 45000;
 const INSTANCE_ID_STORAGE_KEY = "bridge_instance_id";
 

@@ -21,8 +21,8 @@
   // If you deploy from the repo root, this file is used instead. Do not
   // deploy from both places in the same pipeline.
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "prod",
-  "account_id": "d91b1a43a188b73be61833adee445111",
+  "name": "gemini-bridge",
+  "account_id": "bd1a35bb5a1370b016121fa9d3a1b18c",
   "main": "cloudflare-worker/src/index.js",
   "compatibility_date": "2026-09-12",
   "compatibility_flags": ["nodejs_compat"],
@@ -44,7 +44,7 @@
   // the Gemini.web.bridge@gmail.com Cloudflare account; the pre-migration id
   // (9620c1ac…) was in a different account and is not valid here.
   "kv_namespaces": [
-    { "binding": "ARTIFACT_KV", "id": "400bc54565de455689ece92f8351bcb9" }
+    { "binding": "ARTIFACT_KV", "id": "fd7428a2eae74f209e1b16dfc2d5ffbb" }
   ],
 
   "migrations": [

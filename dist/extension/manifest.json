@@ -10,7 +10,7 @@
   ],
   "host_permissions": [
     "https://gemini.google.com/*",
-    "https://prod.gemini-web-bridge.workers.dev/*"
+    "__WORKER_URL__/*"
   ],
   "background": {
     "service_worker": "background.js",

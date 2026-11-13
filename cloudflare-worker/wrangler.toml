@@ -4,10 +4,11 @@
 # "gemini-web-bridge" produced the doubled, confusing
 # gemini-web-bridge.gemini-web-bridge.workers.dev. "prod" keeps the hostname
 # readable and leaves the subdomain as the branding.
-name = "prod"
+name = "gemini-bridge"
 main = "src/index.js"
 compatibility_date = "2026-09-12"
 compatibility_flags = ["nodejs_compat"]
+account_id = "bd1a35bb5a1370b016121fa9d3a1b18c"
 
 # This worker is reachable at prod.gemini-web-bridge.workers.dev
 # (subdomain "gemini-web-bridge" on the Gemini.web.bridge@gmail.com account).
@@ -31,7 +32,7 @@ bindings = [
 # and is unreachable from here — a KV id is not valid across accounts.
 [[kv_namespaces]]
 binding = "ARTIFACT_KV"
-id = "400bc54565de455689ece92f8351bcb9"
+id = "fd7428a2eae74f209e1b16dfc2d5ffbb"
 
 [[migrations]]
 tag = "v1"
