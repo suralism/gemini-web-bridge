@@ -1183,7 +1183,7 @@
     }
   }
 
-  function triggerUiModelSelection(targetModelId, displayName) {
+  async function triggerUiModelSelection(targetModelId, displayName) {
     if (typeof document === "undefined") return false;
     try {
       const trigger = typeof document.querySelector === "function" ? document.querySelector(
@@ -1201,7 +1201,16 @@
 
       const cleanTarget = normalizeModelText(String(targetModelId).replace(/^gemini-/, ""));
       const displayTarget = normalizeModelText(displayName);
-      const items = Array.from(document.querySelectorAll("[role='menuitem'], [role='menuitemradio'], gem-menu-item, button"));
+      // The menu renders asynchronously after the click; querying immediately
+      // found only the trigger button, so the picker was left open and the next
+      // typed prompt landed behind it.
+      let items = [];
+      const deadline = Date.now() + 1500;
+      while (Date.now() < deadline) {
+        items = Array.from(document.querySelectorAll("[role='menuitem'], [role='menuitemradio'], gem-menu-item"));
+        if (items.length > 0) break;
+        await new Promise((r) => setTimeout(r, 100));
+      }
 
       let matched = false;
       for (const item of items) {
@@ -1211,8 +1220,12 @@
           matched = true;
           break;
         }
-        const words = cleanTarget.replace(/-thinking$/, "").split(/[-_\s]+/).filter(Boolean);
-        if (words.length > 0 && words.every(w => text.includes(w))) {
+        const wanted = [cleanTarget, displayTarget].filter(Boolean);
+        const hit = wanted.some((w) => {
+          const words = w.replace(/thinking$/, "").split(/[-_\s]+/).filter(Boolean);
+          return words.length > 0 && words.every((word) => text.includes(word));
+        });
+        if (hit) {
           item.click(); // Select target model item
           matched = true;
           break;
@@ -1254,7 +1267,7 @@
       const wantedLabel = normalizeModelText(msg.name || model);
       if (activeLabel && wantedLabel &&
           !activeLabel.includes(wantedLabel) && !wantedLabel.includes(activeLabel)) {
-        triggerUiModelSelection(model, msg.name);
+        await triggerUiModelSelection(model, msg.name);
         await new Promise((r) => setTimeout(r, 900));
       }
       syncModelsToWorker();
@@ -1269,7 +1282,7 @@
     }
 
     // Trigger actual UI model selection once
-    const selected = triggerUiModelSelection(model, msg.name);
+    const selected = await triggerUiModelSelection(model, msg.name);
 
     // In live Gemini session with active buildLabel, auto-verify model mapping under native schema
     if (sessionState.sessionReady && sessionState.buildLabel && typeof window !== "undefined" && window.location && window.location.hostname && window.location.hostname.includes("gemini.google.com")) {

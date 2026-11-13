@@ -3644,7 +3644,12 @@ export class GeminiBridgeDO extends DurableObject {
         if (!["MODEL_READY","STREAM_ERROR"].includes(msg.type)) return;
         clearTimeout(timer);this.activeStreams.delete(requestId);
         if(msg.type==="STREAM_ERROR") reject(Object.assign(new Error(msg.error || "Model unverified"),{code:msg.code || "model_unverified"}));
-        else resolve(msg);
+        else {
+          // Reflect what the picker actually shows, so /health stops reporting a
+          // stale model after a switch.
+          if (msg.activeModel) this.activeBrowserModel = msg.activeModel;
+          resolve(msg);
+        }
       });
       const displayName = this.dynamicModels.find((m) => m.id === model)?.name || "";
       try { this.activeSocket.send(JSON.stringify({type:"PREPARE_MODEL",requestId,model,name:displayName,catalogRevision:this.catalogRevision})); }
