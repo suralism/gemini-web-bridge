@@ -696,9 +696,14 @@
    */
   function detectScope() {
     if (typeof location === "undefined" || !location.pathname) return "app";
-    let m = /^\/notebook\/([A-Za-z0-9_-]+)/.exec(location.pathname);
+    // Gemini mounts the app under /u/<n>/ for any account that is not the
+    // browser's default one (…/u/1/app/<id>). Matching the raw pathname there
+    // always falls through to the generic "app", so the bridge never learns the
+    // conversation id and treats every request as a fresh chat.
+    const path = location.pathname.replace(/^\/u\/\d+(?=\/|$)/, "") || "/app";
+    let m = /^\/notebook\/([A-Za-z0-9_-]+)/.exec(path);
     if (m) return `notebook:${m[1]}`;
-    m = /^\/app\/([A-Za-z0-9_-]+)/.exec(location.pathname);
+    m = /^\/app\/([A-Za-z0-9_-]+)/.exec(path);
     if (m) return `app:${m[1]}`;
     return "app";
   }

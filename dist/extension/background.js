@@ -22,6 +22,17 @@ import {
 } from './protocol-messages.js';
 
 const DEFAULT_WORKER_URL = "__WORKER_URL__";
+
+/**
+ * Re-apply the /u/<n> account prefix to a scope URL.
+ * Secondary Google accounts serve Gemini from /u/<n>/…; navigating to the bare
+ * /app path switches account context and opens a new conversation.
+ */
+function withAccountPrefix(url, tabUrl) {
+  const m = String(tabUrl || "").match(/^https:\/\/gemini\.google\.com(\/u\/\d+)(?=\/|$)/);
+  if (!m) return url;
+  return String(url).replace("https://gemini.google.com", `https://gemini.google.com${m[1]}`);
+}
 // Injected by scripts/build-extension.py at build time — never commit real values.
 const DEFAULT_BRIDGE_AUTH_TOKEN = "__BRIDGE_AUTH_TOKEN__";
 const SCOPE_SWITCH_TIMEOUT_MS = 45000;
@@ -1025,8 +1036,18 @@ export class BridgeSocketManager {
       }, SCOPE_SWITCH_TIMEOUT_MS)
     });
 
-    const url = scopeToUrl(target);
     const leaderId = this.coordinator?.activeLeaderTabId;
+    // Keep the account prefix: on a secondary Google account the app lives at
+    // /u/<n>/app, and navigating to the unprefixed /app drops the bridge onto a
+    // different (or default) account — which also starts a fresh conversation.
+    let leaderUrl = "";
+    if (leaderId != null && this.tabsApi) {
+      try {
+        const tab = await this.tabsApi.get(leaderId);
+        leaderUrl = (tab && tab.url) || "";
+      } catch (e) { /* tab may be gone; fall back to the unprefixed URL */ }
+    }
+    const url = withAccountPrefix(scopeToUrl(target), leaderUrl);
     if (leaderId != null && this.coordinator.connectedPorts.has(leaderId) && this.tabsApi) {
       try {
         await this.tabsApi.update(leaderId, { url });
