@@ -63,5 +63,16 @@ Health: `curl https://gemini-bridge.suralism.workers.dev/health` →
 | Symptom | Cause | Fix |
 |---|---|---|
 | `/health` says DISCONNECTED but the page pill says Online | WS upgrade rejected | check `ALLOWED_ORIGINS` contains the current extension origin (403) |
-| `chat/completions` 500 `Google Web Endpoint returned HTTP 400` | Gemini web rejected the replayed StreamGenerate payload for the account/UI/model in use | switch the page model (Pro is known-good), retry on the primary Google account (`/u/0`), or set `GEMINI_API_KEY` and rely on the hybrid fallback (non-streaming only) |
+| `chat/completions` 500 `Google Web Endpoint returned HTTP 400` | the replay posted to `/ _/BardChatUi/...` without the account prefix; Gemini serves secondary accounts under `/u/<n>/` | fixed in `dist/extension/injected.js` — it now derives the prefix from `location.pathname`. Reload the extension after changing it |
 | Extension won't load: `Could not load options page` | upstream deleted `options.html` but kept the manifest key | fixed here — `dist/extension/options.html` is tracked |
+
+## Verified status (local install)
+
+- `extension_status: CONNECTED_AND_READY`
+- models discovered: `gemini-4-argon`, `gemini-3.8-flash`, `gemini-3.5-flash-lite`, `gemini-3.1-pro`
+- non-streaming completion: HTTP 200 (Thai + English tested)
+- SSE streaming: HTTP 200, `data:` chunks
+- MCP: `initialize` + `tools/list` (9 tools) + `tools/call ping` → ONLINE (Session Ready)
+
+Note: the extension must be reloaded from `chrome://extensions` after any file
+change; refreshing the Gemini tab alone keeps the cached copy.
