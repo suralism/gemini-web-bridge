@@ -1158,7 +1158,32 @@
    * Auto opens closed dropdown, clicks matching model, verifies selection, closes menu.
    * NEVER types prompts or executes automated chat queries!
    */
-  function triggerUiModelSelection(targetModelId) {
+  function normalizeModelText(value) {
+    return String(value || "")
+      .toLowerCase()
+      .replace(/[-_/]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  /** Label currently shown on Gemini's model picker ("3.8 Flash-Lite", "4 Argon"). */
+  function readActiveModelLabel() {
+    try {
+      if (typeof document === "undefined" || !document.querySelector) return "";
+      const trigger = document.querySelector(
+        'button[data-test-id="bard-mode-menu-button"], ' +
+        'button.input-area-switch, ' +
+        'button[aria-label*="mode picker"], button[aria-label*="model picker"], ' +
+        'button[aria-label*="เปิดตัวเลือกโหมด"], button[aria-label*="picker"], ' +
+        'button[aria-haspopup="menu"], [role="button"][aria-haspopup="menu"]'
+      );
+      return normalizeModelText(trigger ? (trigger.innerText || trigger.textContent || "") : "");
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function triggerUiModelSelection(targetModelId, displayName) {
     if (typeof document === "undefined") return false;
     try {
       const trigger = typeof document.querySelector === "function" ? document.querySelector(
@@ -1174,12 +1199,13 @@
         trigger.click(); // Open menu
       }
 
-      const cleanTarget = targetModelId.replace(/^gemini-/, "").toLowerCase();
+      const cleanTarget = normalizeModelText(String(targetModelId).replace(/^gemini-/, ""));
+      const displayTarget = normalizeModelText(displayName);
       const items = Array.from(document.querySelectorAll("[role='menuitem'], [role='menuitemradio'], gem-menu-item, button"));
 
       let matched = false;
       for (const item of items) {
-        const text = (item.innerText || item.textContent || "").toLowerCase();
+        const text = normalizeModelText(item.innerText || item.textContent || "");
         if (cleanTarget.includes("thinking") && text.includes("thinking")) {
           item.click();
           matched = true;
@@ -1221,18 +1247,29 @@
     let currentStatus = registry.getModelStatus(model);
 
     if (currentStatus.verification === "verified" && currentStatus.mappingRevision) {
+      // "Verified" only means the mapping is proven — it does NOT mean the tab
+      // is currently on that model. Answering anyway silently used whatever
+      // was selected (e.g. 3.8 Flash-Lite for a 4 Argon request).
+      const activeLabel = readActiveModelLabel();
+      const wantedLabel = normalizeModelText(msg.name || model);
+      if (activeLabel && wantedLabel &&
+          !activeLabel.includes(wantedLabel) && !wantedLabel.includes(activeLabel)) {
+        triggerUiModelSelection(model, msg.name);
+        await new Promise((r) => setTimeout(r, 900));
+      }
       syncModelsToWorker();
       sendToWorker({
         type: "MODEL_READY",
         requestId,
         model,
+        activeModel: readActiveModelLabel(),
         mappingRevision: currentStatus.mappingRevision
       });
       return;
     }
 
     // Trigger actual UI model selection once
-    const selected = triggerUiModelSelection(model);
+    const selected = triggerUiModelSelection(model, msg.name);
 
     // In live Gemini session with active buildLabel, auto-verify model mapping under native schema
     if (sessionState.sessionReady && sessionState.buildLabel && typeof window !== "undefined" && window.location && window.location.hostname && window.location.hostname.includes("gemini.google.com")) {

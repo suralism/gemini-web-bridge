@@ -3646,7 +3646,8 @@ export class GeminiBridgeDO extends DurableObject {
         if(msg.type==="STREAM_ERROR") reject(Object.assign(new Error(msg.error || "Model unverified"),{code:msg.code || "model_unverified"}));
         else resolve(msg);
       });
-      try { this.activeSocket.send(JSON.stringify({type:"PREPARE_MODEL",requestId,model,catalogRevision:this.catalogRevision})); }
+      const displayName = this.dynamicModels.find((m) => m.id === model)?.name || "";
+      try { this.activeSocket.send(JSON.stringify({type:"PREPARE_MODEL",requestId,model,name:displayName,catalogRevision:this.catalogRevision})); }
       catch(error) {clearTimeout(timer);this.activeStreams.delete(requestId);reject(error);}
     });
   }
