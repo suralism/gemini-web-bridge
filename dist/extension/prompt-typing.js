@@ -411,8 +411,10 @@
     }
 
     if (!isTabVisible(doc)) {
-      log("[typing] step=visibility FAILED tab is not foregrounded");
-      return { ok: false, reason: "tab_not_visible", step: "visibility" };
+      // The MAIN-world write is plain JS and lands in a background tab; only
+      // the pre-submit read-back can tell. Refusing here made every IDE call
+      // fail while Chrome sat behind the editor.
+      log("[typing] step=visibility: tab is not foregrounded, attempting anyway");
     }
 
     if (!findEditor(doc)) {

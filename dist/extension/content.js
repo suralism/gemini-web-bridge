@@ -1158,6 +1158,25 @@
    * Auto opens closed dropdown, clicks matching model, verifies selection, closes menu.
    * NEVER types prompts or executes automated chat queries!
    */
+  // Gemini localises the picker ("อาร์กอน" for Argon), so a plain string match
+  // against the catalog name ("4 Argon") never fires on a Thai UI.
+  const MODEL_WORD_SYNONYMS = {
+    argon: ["argon", "อาร์กอน"],
+    pro: ["pro", "โปร"],
+    flash: ["flash", "แฟลช"],
+    lite: ["lite", "ไลท์", "ไลต์"],
+    thinking: ["thinking", "คิด"]
+  };
+
+  function modelTextMatches(text, wanted) {
+    const words = String(wanted || "").split(/[-_\s]+/).filter(Boolean);
+    if (words.length === 0) return false;
+    return words.every((word) => {
+      const alts = MODEL_WORD_SYNONYMS[word] || [word];
+      return alts.some((alt) => text.includes(alt));
+    });
+  }
+
   function normalizeModelText(value) {
     return String(value || "")
       .toLowerCase()
@@ -1221,10 +1240,7 @@
           break;
         }
         const wanted = [cleanTarget, displayTarget].filter(Boolean);
-        const hit = wanted.some((w) => {
-          const words = w.replace(/thinking$/, "").split(/[-_\s]+/).filter(Boolean);
-          return words.length > 0 && words.every((word) => text.includes(word));
-        });
+        const hit = wanted.some((w) => modelTextMatches(text, w.replace(/thinking$/, "")));
         if (hit) {
           item.click(); // Select target model item
           matched = true;
@@ -1266,7 +1282,7 @@
       const activeLabel = readActiveModelLabel();
       const wantedLabel = normalizeModelText(msg.name || model);
       if (activeLabel && wantedLabel &&
-          !activeLabel.includes(wantedLabel) && !wantedLabel.includes(activeLabel)) {
+          !modelTextMatches(activeLabel, wantedLabel) && !modelTextMatches(wantedLabel, activeLabel)) {
         await triggerUiModelSelection(model, msg.name);
         await new Promise((r) => setTimeout(r, 900));
       }
