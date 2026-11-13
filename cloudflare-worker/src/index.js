@@ -311,9 +311,11 @@ function buildStreamGeneratePayload(messages = [], state = {}, model = "", optio
   const rawConvId = state.conversationId || options.conversationId;
   if (rawConvId && typeof rawConvId === "string") {
     const clean = rawConvId.replace(/^c_/, "");
-    if (/^[0-9a-fA-F]{32}$/.test(clean)) {
+    // Gemini uses 16-hex ids in the app URL (…/app/6c05b274242360a8) and
+    // 32-hex ids in some payloads; both are valid conversation handles.
+    if (/^[0-9a-fA-F]{16}$|^[0-9a-fA-F]{32}$/.test(clean)) {
       conversationId = clean;
-    } else if (/^[0-9a-fA-F]{32}$/.test(rawConvId)) {
+    } else if (/^[0-9a-fA-F]{16}$|^[0-9a-fA-F]{32}$/.test(rawConvId)) {
       conversationId = rawConvId;
     }
   }
@@ -2127,6 +2129,17 @@ export class GeminiBridgeDO extends DurableObject {
   // ─── KAN-242: Automatic Conversation Context Rotation ───
 
   /**
+   * Remember the conversation/response/choice ids of the turn that just ran so
+   * the NEXT replay continues that chat instead of opening a new one.
+   */
+  adoptConversationState(update) {
+    if (!update || typeof update !== "object") return;
+    if (update.conversationId) this.conversationState.conversationId = update.conversationId;
+    if (update.responseId) this.conversationState.responseId = update.responseId;
+    if (update.choiceId) this.conversationState.choiceId = update.choiceId;
+  }
+
+  /**
    * Returns the integer threshold for conversation context rotation, or 0 if disabled/invalid.
    */
   rotationThreshold() {
@@ -2434,7 +2447,9 @@ export class GeminiBridgeDO extends DurableObject {
     // One logical request keeps ONE requestId for its whole life, so a native
     // retry and the replay attempt it replaces stay correlated in activeStreams.
     const requestId = `req_${crypto.randomUUID()}`;
-    const encodedReq = ProtocolDecoder.encodeRequest(messages, {}, model);
+    // Carry the conversation ids captured from the previous turn: without them
+      // every replay starts a brand-new Gemini chat.
+      const encodedReq = ProtocolDecoder.encodeRequest(messages, this.conversationState, model);
 
     // Stage 1: the replay attempt. If Gemini answers with a refusal or an
     // upstream error, escalate to the native retry button below.
@@ -2463,6 +2478,13 @@ export class GeminiBridgeDO extends DurableObject {
         throw Object.assign(new Error("replay_skipped_for_grounding"), { __typedOnly: true });
       }
       text = await this.runReplayAttempt({ requestId, encodedReq, model, onChunk });
+      // A replayed payload can be accepted by Google and still come back with no
+      // text (stale `at` token / template drift). Treat that exactly like the
+      // no-chunk timeout so the typed path takes over instead of returning an
+      // empty answer to the caller.
+      if (!text || !text.trim()) {
+        throw new Error("no response chunk: replay returned empty text");
+      }
     } catch (replayErr) {
       const forced = replayErr?.__typedOnly === true;
       const timedOut = /no response chunk|Timeout/i.test(replayErr?.message || "");
@@ -3041,7 +3063,8 @@ export class GeminiBridgeDO extends DurableObject {
           // Decode complete RPC lines only; network chunks have arbitrary boundaries.
           const boundary = rpcBuffer.lastIndexOf("\n");
           if (boundary >= 0) {
-            const { deltaText } = ProtocolDecoder.decodeChunk(rpcBuffer.slice(0, boundary + 1));
+            const { deltaText, stateUpdate } = ProtocolDecoder.decodeChunk(rpcBuffer.slice(0, boundary + 1));
+            this.adoptConversationState(stateUpdate);
             rpcBuffer = rpcBuffer.slice(boundary + 1);
             if (adoptText(deltaText)) {
               bumpIdle();
@@ -3053,7 +3076,8 @@ export class GeminiBridgeDO extends DurableObject {
         } else if (msg.type === "STREAM_DONE") {
           cleanup();
           this.activeStreams.delete(requestId);
-          const { deltaText } = ProtocolDecoder.decodeChunk(rpcBuffer);
+          const { deltaText, stateUpdate } = ProtocolDecoder.decodeChunk(rpcBuffer);
+          this.adoptConversationState(stateUpdate);
           adoptText(deltaText);
           // KAN-202: `STREAM_DONE` used to record an unqualified success.
           // When updates were dropped the answer may have lost its tail, and
@@ -3797,6 +3821,11 @@ export class GeminiBridgeDO extends DurableObject {
             }
             if (typeof msg.scope === "string" && msg.scope) {
               this.currentScope = msg.scope;
+              // app:<id> is the live conversation; remember it so the next
+              // replay continues that chat instead of opening a new one.
+              if (msg.scope.startsWith("app:")) {
+                this.adoptConversationState({ conversationId: msg.scope.slice(4) });
+              }
               const conn = this.activeConnections.get(instanceId);
               if (conn) conn.scope = msg.scope;
               if (msg.scope.startsWith("notebook:")) this.lastNotebookScope = msg.scope;
@@ -3824,6 +3853,9 @@ export class GeminiBridgeDO extends DurableObject {
             // Phase 4: Extension confirmed scope switch is complete
             if (msg.scope) {
               this.currentScope = msg.scope;
+              if (msg.scope.startsWith("app:")) {
+                this.adoptConversationState({ conversationId: msg.scope.slice(4) });
+              }
               const conn = this.activeConnections.get(instanceId);
               if (conn) conn.scope = msg.scope;
               vlog(`[Bridge DO] Scope confirmed: ${msg.scope} (requestId: ${msg.requestId || 'N/A'})`);
