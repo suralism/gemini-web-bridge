@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Gemini Web Bridge — Settings</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; padding: 28px 32px; background: #0b0f14; color: #e6edf3;
+      font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    .sub { color: #8b949e; margin-bottom: 20px; }
+    .card {
+      background: #121821; border: 1px solid #22303f; border-radius: 10px;
+      padding: 18px 20px; max-width: 720px; margin-bottom: 16px;
+    }
+    label { display: block; font-weight: 600; margin: 14px 0 6px; font-size: 13px; }
+    input, select {
+      width: 100%; box-sizing: border-box; padding: 9px 11px; border-radius: 7px;
+      border: 1px solid #2b3a4a; background: #0d131a; color: #e6edf3; font: inherit;
+    }
+    input::placeholder { color: #55636f; }
+    .row { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
+    button {
+      padding: 9px 16px; border-radius: 7px; border: 1px solid #2b3a4a;
+      background: #1b2733; color: #e6edf3; font: inherit; cursor: pointer;
+    }
+    button.primary { background: #2f81f7; border-color: #2f81f7; color: #fff; }
+    button:hover { filter: brightness(1.12); }
+    .status { display: flex; gap: 10px; align-items: center; font-weight: 600; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #6b7280; }
+    .dot.ok { background: #3fb950; }
+    .dot.bad { background: #f85149; }
+    .meta { color: #8b949e; font-size: 12px; margin-top: 6px; word-break: break-all; }
+    .hint { color: #8b949e; font-size: 12px; margin-top: 6px; }
+    .saved { color: #3fb950; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>Gemini Web Bridge</h1>
+  <div class="sub">Bridge settings are stored in <code>chrome.storage.sync</code>. Empty fields use the values baked into this build.</div>
+
+  <div class="card">
+    <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Checking bridge…</span></div>
+    <div class="meta" id="statusMeta"></div>
+  </div>
+
+  <div class="card">
+    <label for="workerUrl">Worker URL</label>
+    <input id="workerUrl" type="url" spellcheck="false">
+    <div class="hint" id="workerUrlHint"></div>
+
+    <label for="bridgeToken">Bridge auth token</label>
+    <input id="bridgeToken" type="password" spellcheck="false" autocomplete="off">
+    <div class="hint">Shared secret between this extension and the worker.</div>
+
+    <label for="clientApiToken">Client API key</label>
+    <input id="clientApiToken" type="password" spellcheck="false" autocomplete="off">
+    <div class="hint">Key clients (Hermes, Cursor, scripts) use against <code>/v1</code> and <code>/mcp</code>.</div>
+
+    <label for="enforcementMode">Enforcement mode</label>
+    <select id="enforcementMode">
+      <option value="strict">strict — fail closed when unverified</option>
+      <option value="permissive">permissive — allow unverified models</option>
+    </select>
+
+    <div class="row">
+      <button class="primary" id="save">Save</button>
+      <button id="reset">Reset to build defaults</button>
+      <span class="saved" id="savedMsg"></span>
+    </div>
+  </div>
+
+  <script src="settings.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>
