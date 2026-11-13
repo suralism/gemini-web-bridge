@@ -908,7 +908,13 @@
         }
         const buildLabel = activeBuildLabel;
         const reqId = Math.floor(Math.random() * 900000) + 100000;
-        const url = `https://gemini.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?bl=${encodeURIComponent(buildLabel)}&_reqid=${reqId}&rt=c`;
+        // Gemini serves the app under /u/<n>/ for any account that is not the
+        // browser's default one. Posting to the unprefixed path on such an
+        // account is rejected by Google with HTTP 400, which surfaced as
+        // "Google Web Endpoint returned HTTP 400" for every request.
+        const accountMatch = (typeof location !== "undefined" ? location.pathname : "").match(/^\/u\/(\d+)(?:\/|$)/);
+        const accountPrefix = accountMatch ? `/u/${accountMatch[1]}` : "";
+        const url = `https://gemini.google.com${accountPrefix}/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?bl=${encodeURIComponent(buildLabel)}&_reqid=${reqId}&rt=c`;
 
         const bodyParams = new URLSearchParams();
         bodyParams.append("f.req", payload.f_req);
