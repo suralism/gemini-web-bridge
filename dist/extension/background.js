@@ -1311,8 +1311,16 @@ if (typeof chrome !== "undefined" && chrome.runtime?.onConnect) {
             });
           }
           if (windowId) {
-            chrome.windows.update(windowId, { focused: true }, () => {
+            // focused:true alone does nothing for a minimised window, which is
+            // exactly the IDE case (Chrome parked behind the editor).
+            chrome.windows.get(windowId, (win) => {
               if (chrome.runtime.lastError) return;
+              const patch = win && win.state === "minimized"
+                ? { state: "normal", focused: true }
+                : { focused: true };
+              chrome.windows.update(windowId, patch, () => {
+                if (chrome.runtime.lastError) return;
+              });
             });
           }
         }

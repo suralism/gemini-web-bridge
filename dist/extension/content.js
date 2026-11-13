@@ -1573,6 +1573,7 @@
         timeoutMs,
         log: (line) => console.log(`[Bridge] ${line}`)
       });
+      if (outcome && typeof outcome === "object") outcome.wasVisible = visible;
     } catch (err) {
       outcome = {
         ok: false,
@@ -1770,9 +1771,10 @@
       // visibility. Bail here rather than proceeding: typing into a hidden
       // tab is a silent no-op that would look like a successful submit.
       requestTabFocus();
-      if (!(await waitForTabVisible(2000))) {
-        throw Object.assign(new Error("tab_never_visible"), { step: "visibility" });
-      }
+      // Best effort only: the MAIN-world write is plain JS (quill.setText /
+      // execCommand), which lands even when the tab is hidden. Bailing here
+      // made every IDE call fail whenever Chrome was behind another window.
+      const visible = await waitForTabVisible(1200);
       outcome = await Typing.typeAndSend({
         prompt,
         timeoutMs,

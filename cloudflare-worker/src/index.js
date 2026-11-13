@@ -4302,7 +4302,7 @@ export class GeminiBridgeDO extends DurableObject {
             let lastEmitted = "";
             try {
               sse(chunkFrame({ role: "assistant" }));
-              await this.executeThroughExtension(messages, (cumulative) => {
+              const finalText = await this.executeThroughExtension(messages, (cumulative) => {
                 // Gemini re-sends cumulative text; emit only the appended delta.
                 if (typeof cumulative === "string" && cumulative.startsWith(lastEmitted) && cumulative.length > lastEmitted.length) {
                   const delta = cumulative.slice(lastEmitted.length);
@@ -4312,6 +4312,13 @@ export class GeminiBridgeDO extends DurableObject {
                   lastEmitted = cumulative;
                 }
               }, upstreamModel, { thinkingEffort });
+              // The typed path reports no incremental chunks — it resolves with
+              // the finished answer. Without this, a streamed request that fell
+              // back to typing ended with role + stop and no content at all.
+              if (typeof finalText === "string" && finalText.startsWith(lastEmitted) && finalText.length > lastEmitted.length) {
+                sse(chunkFrame({ content: finalText.slice(lastEmitted.length) }));
+                lastEmitted = finalText;
+              }
               sse(chunkFrame({}, "stop"));
               writer.write(encoder.encode("data: [DONE]\n\n"));
               await writer.close();

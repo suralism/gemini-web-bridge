@@ -47,3 +47,5 @@ enabled = false
 BRIDGE_VERBOSE = "1"
 CONTEXT_ROTATION_THRESHOLD = "8"
 MULTI_SESSION = "true"
+# KAN-308 Origin allowlist: the unpacked extension id on this machine
+ALLOWED_ORIGINS = "chrome-extension://dlbegaecpgfiblgidolejligmkghojkd"
